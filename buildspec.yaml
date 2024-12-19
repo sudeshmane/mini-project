@@ -10,9 +10,9 @@ phases:
       - yum install -y python3 python3-pip
       - python3 -m pip install urllib3==1.26.15
       - python3 -m pip install aws-sam-cli
-      - aws configure set aws_access_key_id AKIAYHJANCWHTWVOYSJ7
-      - aws configure set aws_secret_access_key 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
-      - aws configure set default.region us-east-1
+      - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+      - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+      - aws configure set default.region $AWS_DEFAULT_REGION
       
       
   build:
