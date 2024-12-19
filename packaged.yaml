@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  DomainName:
+    Description: Domain name
+    Type: String
+    Default: staticweb-bucket-11
+  OACId:
+    Description: Origin Access Control ID
+    Type: String
+    Default: OAC-ID-19
+Resources:
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Ref: DomainName
+    Metadata:
+      SamResourceId: MyS3Bucket
+  MyLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    DependsOn: MyS3Bucket
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: LambdaCloudWatchPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Resource:
+              Fn::Sub: arn:aws:s3:::${MyS3Bucket}/*
+    Metadata:
+      SamResourceId: MyLambdaExecutionRole
+  MyBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: MyS3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: s3:*
+          Resource:
+            Fn::Sub: arn:aws:s3:::${MyS3Bucket}/*
+        - Effect: Allow
+          Principal:
+            Service: cloudfront.amazonaws.com
+          Action: s3:GetObject
+          Resource:
+          - Fn::Sub: ${MyS3Bucket.Arn}/*
+          - Fn::Sub: ${MyS3Bucket.Arn}
+          Condition:
+            StringEquals:
+              AWS:SourceArn:
+                Fn::Sub: arn:aws:cloudfront::${AWS::AccountId}:distribution/${MyCloudFrontDistribution}
+    Metadata:
+      SamResourceId: MyBucketPolicy
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://sudeshmane-cli/HelloWorld-1.0.jar
+      Role:
+        Fn::GetAtt:
+        - MyLambdaExecutionRole
+        - Arn
+      Handler: helloworld.S3BucketEventHandler::handleRequest
+      Runtime: java11
+      MemorySize: 512
+      Tracing: Active
+      Environment:
+        Variables:
+          POWERTOOLS_LOG_LEVEL: INFO
+          POWERTOOLS_LOGGER_LOG_EVENT: true
+          POWERTOOLS_METRICS_NAMESPACE: sam-app-1
+          PARAM1: VALUE
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+    Metadata:
+      SamResourceId: HelloWorldFunction
+  MyCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    DependsOn: MyS3Bucket
+    Properties:
+      DistributionConfig:
+        CustomErrorResponses:
+        - ErrorCode: 404
+          ResponsePagePath: /custom_404.html
+          ResponseCode: 200
+          ErrorCachingMinTTL: 300
+        - ErrorCode: 500
+          ResponsePagePath: /custom_500.html
+          ResponseCode: 200
+          ErrorCachingMinTTL: 300
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+        - DomainName:
+            Fn::Sub: ${DomainName}.s3.amazonaws.com
+          Id: Origin_ID2
+          OriginAccessControlId:
+            Ref: MyOriginAccessControl
+          S3OriginConfig: {}
+        DefaultCacheBehavior:
+          AllowedMethods:
+          - GET
+          - HEAD
+          Compress: true
+          DefaultTTL: 600
+          TargetOriginId: Origin_ID2
+          ViewerProtocolPolicy: redirect-to-https
+          MaxTTL: 86400
+          MinTTL: 60
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+    Metadata:
+      SamResourceId: MyCloudFrontDistribution
+  CloudFrontOriginIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: OAI for S3 origins
+    Metadata:
+      SamResourceId: CloudFrontOriginIdentity
+  MyOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name:
+          Ref: OACId
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+    Metadata:
+      SamResourceId: MyOriginAccessControl
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name:
+        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+    Metadata:
+      SamResourceId: ApplicationResourceGroup
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName:
+        Ref: ApplicationResourceGroup
+      AutoConfigurationEnabled: true
+    Metadata:
+      SamResourceId: ApplicationInsightsMonitoring
