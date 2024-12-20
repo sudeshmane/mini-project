@@ -33,7 +33,7 @@ phases:
 artifacts:
   files:
     - packaged.yaml 
-      '**/*.jar'
+   #   '**/*.jar'
   #base-directory: target
   discard-paths: yes
   #secondary-artifacts:
