@@ -5,7 +5,7 @@ Parameters:
     DomainName:
         Description: Domain name
         Type: String
-        Default: "staticweb-bucket-Prod"
+        Default: "staticweb-bucket-prod"
     OACId:
         Description: Origin Access Control ID
         Type: String
