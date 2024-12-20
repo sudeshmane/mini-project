@@ -5,11 +5,11 @@ Parameters:
     DomainName:
         Description: Domain name
         Type: String
-        Default: "staticweb-bucket-11"
+        Default: "staticweb-bucket-Prod"
     OACId:
         Description: Origin Access Control ID
         Type: String
-        Default: "OAC-ID-19"
+        Default: "OAC-ID-Prod"
 
 Resources:
 
@@ -33,7 +33,7 @@ Resources:
               Service: 'lambda.amazonaws.com'
             Action: 'sts:AssumeRole'
       Policies:
-        - PolicyName: 'LambdaCloudWatchPolicy'
+        - PolicyName: 'LambdaCloudWatchPolicy_Prod'
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
